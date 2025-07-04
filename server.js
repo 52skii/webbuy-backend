@@ -4,38 +4,32 @@ import cheerio from 'cheerio';
 import cors from 'cors';
 
 const app = express();
-const PORT = process.env.PORT || 3001;
-
 app.use(cors());
+app.use(express.json());
 
-// API endpoint to fetch Shein product data
+// Fetch single product
 app.get('/api/fetch-product', async (req, res) => {
   const { url } = req.query;
-
   if (!url) return res.status(400).json({ error: 'Missing URL' });
-
   try {
-    const response = await axios.get(url);
-    const html = response.data;
+    const { data: html } = await axios.get(url);
     const $ = cheerio.load(html);
-
-    const title = $('title').text().trim();
-    const image = $('meta[property="og:image"]').attr('content');
-    const price = $('meta[property="og:product:price:amount"]').attr('content') || 
-                  $('meta[itemprop="price"]').attr('content') || 
-                  (Math.random() * 40 + 10).toFixed(2); // fallback price
-
-    res.json({
-      title,
-      priceUSD: parseFloat(price),
-      image: image || 'https://via.placeholder.com/100'
-    });
-  } catch (error) {
-    console.error('Error fetching product:', error.message);
-    res.status(500).json({ error: 'Failed to fetch product' });
+    const image = $('meta[property="og:image"]').attr('content') || '';
+    const priceUSD = parseFloat($('meta[property="product:price:amount"]').attr('content')) || 
+                     parseFloat($('[itemprop=price]').attr('content')) || 0;
+    res.json({ image, priceUSD });
+  } catch (e) {
+    res.status(500).json({ error: 'Fetch failed' });
   }
 });
 
-app.listen(PORT, () => {
-  console.log(Webbuy proxy server running on port ${PORT});
+// Fetch shared cart
+app.get('/api/fetch-cart', async (req, res) => {
+  const { url } = req.query;
+  // naive example: pretend we parse items from a shared-cart URL
+  // In real life you'd fetch and parse properly
+  res.json({ items: [] });
 });
+
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => console.log(Backend running on port ${PORT}));
